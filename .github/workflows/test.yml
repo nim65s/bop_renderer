@@ -3,16 +3,44 @@ name: Check build
 on: ["push", "pull_request"]
 
 jobs:
-  build:
-    name: Build
+  ubuntu:
+    name: Build on ubuntu
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - name: Install dependencies
         run: sudo apt update && sudo apt install -qy python-is-python3 python3-numpy cmake libosmesa6-dev
       - name: Configure
-        run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
+        run: cmake -B build -S .
+        env:
+          CMAKE_BUILD_TYPE: Release
       - name: Build
         run: cmake --build build
-      - name: test
-        run: PYTHONPATH=build python -c "import bop_renderer"
+      - name: Test
+        run: python -c "import bop_renderer"
+        env:
+          PYTHONPATH: build
+  conda:
+    name: Build on conda
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup conda
+        uses: conda-incubator/setup-miniconda@v2
+      - name: Create conda environment
+        run: conda create -n bop_renderer python=3.10 -y
+      - name: Install dependencies
+        run: conda install -n bop_renderer -c conda-forge cxx-compiler "cmake>=3.16" ninja mesalib
+      - name: Configure
+        run: conda run -n bop_renderer cmake -B build -S .
+        env:
+          CMAKE_BUILD_TYPE: Release
+          CMAKE_C_COMPILER: gcc
+          CMAKE_CXX_COMPILER: g++
+          CMAKE_GENERATOR: Ninja
+      - name: Build
+        run: conda run -n bop_renderer cmake --build build
+      - name: Test
+        run: conda run -n bop_renderer python -c "import bop_renderer"
+        env:
+          PYTHONPATH: build
